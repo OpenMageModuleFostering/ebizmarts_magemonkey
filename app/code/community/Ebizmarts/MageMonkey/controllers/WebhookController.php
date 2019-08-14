@@ -17,6 +17,7 @@ class Ebizmarts_MageMonkey_WebhookController extends Mage_Core_Controller_Front_
     public function indexAction()
     {
         $requestKey = $this->getRequest()->getParam('wkey');
+
         //Checking if "wkey" para is present on request, we cannot check for !isPost()
         //because Mailchimp pings the URL (GET request) to validate webhook
         if (!$requestKey) {

@@ -202,8 +202,7 @@ class Ebizmarts_MageMonkey_Adminhtml_BulksyncController extends Mage_Adminhtml_C
         $this->_redirectReferer($this->_defredirect);
     }
 
-    public function getListsAction()
-    {
+    public function getListsAction(){
         $params = $this->getRequest()->getParams();
         $storeId = $params['store_id'];
         $curstore = Mage::app()->getStore();
@@ -214,8 +213,7 @@ class Ebizmarts_MageMonkey_Adminhtml_BulksyncController extends Mage_Adminhtml_C
         $this->getResponse()->setBody(Mage::helper('core')->jsonEncode($lists));
     }
 
-    protected function _isAllowed() 
-    {
+    protected function _isAllowed() {
         switch ($this->getRequest()->getActionName()) {
             case 'getLists':
             case 'export':
@@ -234,9 +232,10 @@ class Ebizmarts_MageMonkey_Adminhtml_BulksyncController extends Mage_Adminhtml_C
                 $acl2 = 'newsletter/magemonkey/bulksync/mc_to_mage';
                 break;
         }
-        if (!Mage::getSingleton('admin/session')->isAllowed($acl) && $acl2) {
+        $ret = false;
+        if(!Mage::getSingleton('admin/session')->isAllowed($acl) && $acl2){
             $ret = Mage::getSingleton('admin/session')->isAllowed($acl2);
-        } else {
+        }else{
             $ret = Mage::getSingleton('admin/session')->isAllowed($acl);
         }
         return $ret;

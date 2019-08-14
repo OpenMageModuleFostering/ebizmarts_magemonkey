@@ -5,8 +5,7 @@ removeManageNewsletter = function () {
     }
 }
 
-document.observe(
-    "dom:loaded", function () {
+document.observe("dom:loaded", function () {
 
     var monkeyEnabled = $$('div.block-content ul li a[href*="monkey/customer_account/index"]');
 
@@ -20,5 +19,4 @@ document.observe(
         }
     }
 
-    }
-);
+});

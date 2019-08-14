@@ -24,15 +24,13 @@ if ($tableExists) {
             )
         );
     }catch (Exception $e){
-        Mage::log($e->getMessage());
+
     }
 }
 
 $installer->getConnection()
-    ->addColumn(
-        $installer->getTable('ebizmarts_abandonedcart/popup'), 'store_id', Varien_Db_Ddl_Table::TYPE_SMALLINT, null, array(
+    ->addColumn($installer->getTable('ebizmarts_abandonedcart/popup'),'store_id', Varien_Db_Ddl_Table::TYPE_SMALLINT, null, array(
         'nullable'  => false,
-        ), 'Store Id'
-    );
+    ), 'Store Id');
 
 $installer->endSetup();

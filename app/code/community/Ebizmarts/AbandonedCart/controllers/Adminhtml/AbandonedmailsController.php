@@ -66,8 +66,7 @@ class Ebizmarts_AbandonedCart_Adminhtml_AbandonedmailsController extends Mage_Ad
     /**
      *
      */
-    protected function _isAllowed() 
-    {
+    protected function _isAllowed() {
         switch ($this->getRequest()->getActionName()) {
             case 'index':
             case 'grid':

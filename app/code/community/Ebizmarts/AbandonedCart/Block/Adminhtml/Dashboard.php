@@ -19,12 +19,10 @@ class Ebizmarts_AbandonedCart_Block_Adminhtml_Dashboard extends Mage_Adminhtml_B
 
     protected function _prepareLayout()
     {
-        $this->setChild(
-            'sales',
+        $this->setChild('sales',
             $this->getLayout()->createBlock('ebizmarts_abandonedcart/adminhtml_dashboard_sales')
         );
-        $this->setChild(
-            'totals',
+        $this->setChild('totals',
             $this->getLayout()->createBlock('ebizmarts_abandonedcart/adminhtml_dashboard_totals')
         );
 

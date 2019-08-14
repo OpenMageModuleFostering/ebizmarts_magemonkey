@@ -12,8 +12,7 @@ $installer = $this;
 
 $installer->startSetup();
 
-$installer->run(
-    "
+$installer->run("
 	CREATE TABLE IF NOT EXISTS `{$this->getTable('ebizmarts_abandonedcart_popup')}` (
 	  `id` INT(10) unsigned NOT NULL auto_increment,
 	  `email` varchar(128),
@@ -23,7 +22,6 @@ $installer->run(
 	  PRIMARY KEY (`id`)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-"
-);
+");
 
 $installer->endSetup();

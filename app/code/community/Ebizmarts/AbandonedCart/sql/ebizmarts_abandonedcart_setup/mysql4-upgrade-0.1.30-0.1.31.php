@@ -12,8 +12,7 @@ $installer = $this;
 
 $installer->startSetup();
 
-$installer->run(
-    "
+$installer->run("
 	CREATE TABLE IF NOT EXISTS `{$this->getTable('ebizmarts_abandonedcart_abtesting')}` (
 	  `id` INT(10) unsigned NOT NULL auto_increment,
 	  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -22,7 +21,6 @@ $installer->run(
 	  PRIMARY KEY (`id`)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-"
-);
+");
 
 $installer->endSetup();
