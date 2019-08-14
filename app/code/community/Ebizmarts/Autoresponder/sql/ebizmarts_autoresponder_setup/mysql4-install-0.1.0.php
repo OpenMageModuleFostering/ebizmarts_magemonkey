@@ -5,13 +5,14 @@
  * Time   : 11:20 AM
  * File   : ${FILE_NAME}
  * Module : ${PROJECT_NAME}
- */ 
+ */
 /* @var $installer Mage_Core_Model_Resource_Setup */
 $installer = $this;
 
 $installer->startSetup();
 
-$installer->run("
+$installer->run(
+    "
 
 	CREATE TABLE IF NOT EXISTS `{$this->getTable('ebizmarts_autoresponder_unsubscribe')}` (
 	  `id` int(10) unsigned NOT NULL auto_increment,
@@ -22,6 +23,7 @@ $installer->run("
 	  PRIMARY KEY  (`id`)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-");
+"
+);
 
 $installer->endSetup();

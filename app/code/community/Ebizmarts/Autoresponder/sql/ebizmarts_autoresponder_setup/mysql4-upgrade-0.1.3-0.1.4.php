@@ -9,7 +9,8 @@ $installer = $this;
 
 $installer->startSetup();
 
-$installer->run("
+$installer->run(
+    "
 
 	CREATE TABLE IF NOT EXISTS `{$this->getTable('ebizmarts_autoresponder_visited')}` (
 	  `id` int(10) unsigned NOT NULL auto_increment,
@@ -20,7 +21,8 @@ $installer->run("
 	  PRIMARY KEY  (`id`)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-");
+"
+);
 
 $applyTo = array(
     Mage_Catalog_Model_Product_Type::TYPE_SIMPLE,
@@ -31,24 +33,24 @@ $installer->addAttribute(
     Mage_Catalog_Model_Product::ENTITY,
     'ebizmarts_mark_visited',
     array(
-        'group'             => 'General',
-        'type'              => 'int',
-        'backend'           => '',
-        'frontend'          => '',
-        'label'             => 'Send Browsed Product Autoresponder',
-        'input'             => 'select',
-        'source'            => 'eav/entity_attribute_source_boolean',
-        'global'            => Mage_Catalog_Model_Resource_Eav_Attribute::SCOPE_WEBSITE,
-        'required'          => false,
-        'user_defined'      => true,
-        'default'           => '0',
-        'searchable'        => false,
-        'filterable'        => false,
-        'comparable'        => false,
-        'visible_on_front'  => false,
-        'unique'            => false,
-        'is_configurable'   => false,
-        'apply_to'          => implode(',',$applyTo)
+        'group' => 'General',
+        'type' => 'int',
+        'backend' => '',
+        'frontend' => '',
+        'label' => 'Send Browsed Product Autoresponder',
+        'input' => 'select',
+        'source' => 'eav/entity_attribute_source_boolean',
+        'global' => Mage_Catalog_Model_Resource_Eav_Attribute::SCOPE_WEBSITE,
+        'required' => false,
+        'user_defined' => true,
+        'default' => '0',
+        'searchable' => false,
+        'filterable' => false,
+        'comparable' => false,
+        'visible_on_front' => false,
+        'unique' => false,
+        'is_configurable' => false,
+        'apply_to' => implode(',', $applyTo)
     )
 );
 
