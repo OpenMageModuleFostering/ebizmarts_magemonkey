@@ -193,31 +193,36 @@ class Ebizmarts_MageMonkey_Model_Observer
         }
 
         $webhooksKey = Mage::helper('monkey')->getWebhooksKey();
+        $allowWebhooks = Mage::getStoreConfig('monkey/general/enable_webhooks', $store);
 
         //Generating Webhooks URL
-        $hookUrl = '';
-        try {
-            $hookUrl = Mage::getModel('core/url')->setStore($store)->getUrl(Ebizmarts_MageMonkey_Model_Monkey::WEBHOOKS_PATH, array('wkey' => $webhooksKey));
-        } catch (Exception $e) {
-            $hookUrl = Mage::getModel('core/url')->getUrl(Ebizmarts_MageMonkey_Model_Monkey::WEBHOOKS_PATH, array('wkey' => $webhooksKey));
+        if($allowWebhooks) {
+            $hookUrl = '';
+            try {
+                $hookUrl = Mage::getModel('core/url')->setStore($store)->getUrl(Ebizmarts_MageMonkey_Model_Monkey::WEBHOOKS_PATH, array('wkey' => $webhooksKey));
+            } catch (Exception $e) {
+                $hookUrl = Mage::getModel('core/url')->getUrl(Ebizmarts_MageMonkey_Model_Monkey::WEBHOOKS_PATH, array('wkey' => $webhooksKey));
+            }
+
+            if (FALSE != strstr($hookUrl, '?', true)) {
+                $hookUrl = strstr($hookUrl, '?', true);
+            }
+
+            $api = Mage::getSingleton('monkey/api', array('apikey' => $apiKey));
+
+            //Validate API KEY
+            $api->ping();
+            if ($api->errorCode) {
+                Mage::getSingleton('adminhtml/session')->addError($api->errorMessage);
+                return $observer;
+            }
+
+            $lists = $api->lists();
+
+            $this->_saveCustomerGroups($lists,$api,$selectedLists,$hookUrl);
         }
 
-        if (FALSE != strstr($hookUrl, '?', true)) {
-            $hookUrl = strstr($hookUrl, '?', true);
-        }
-
-        $api = Mage::getSingleton('monkey/api', array('apikey' => $apiKey));
-
-        //Validate API KEY
-        $api->ping();
-        if ($api->errorCode) {
-            Mage::getSingleton('adminhtml/session')->addError($api->errorMessage);
-            return $observer;
-        }
-
-        $lists = $api->lists();
-
-        $this->_saveCustomerGroups($lists,$api,$selectedLists,$hookUrl);
+        return $observer;
 
     }
     protected function _saveCustomerGroups($lists,$api,$selectedLists,$hookUrl)
@@ -263,13 +268,11 @@ class Ebizmarts_MageMonkey_Model_Observer
 
                 //If webhook was not added, add a message on Admin panel
                 if ($api->errorCode && Mage::helper('monkey')->isAdmin()) {
-
                     //Don't show an error if webhook already in, otherwise, show error message and code
                     if ($api->errorMessage !== "Setting up multiple WebHooks for one URL is not allowed.") {
                         $message = Mage::helper('monkey')->__('Could not add Webhook "%s" for list "%s", error code %s, %s', $hookUrl, $list['name'], $api->errorCode, $api->errorMessage);
                         Mage::getSingleton('adminhtml/session')->addError($message);
                     }
-
                 }
                 /**
                  * Adding Webhooks
@@ -293,7 +296,7 @@ class Ebizmarts_MageMonkey_Model_Observer
         $request = Mage::app()->getRequest();
         $isAdmin = $request->getActionName() == 'save' && $request->getControllerName() == 'customer' && $request->getModuleName() == (string)Mage::getConfig()->getNode('admin/routers/adminhtml/args/frontName');
         $customer = $observer->getEvent()->getCustomer();
-        $isCheckout = $request->getModuleName() == 'checkout' || $request->getModuleName() == 'sgps' || Mage::getSingleton('core/session')->getIsOneStepCheckout() || Mage::getSingleton('core/session')->getMonkeyCheckout();
+        $isCheckout = $request->getControllerName() == 'sales_order_create' || $request->getModuleName() == 'firecheckout' || $request->getModuleName() == 'checkout' || $request->getModuleName() == 'sgps' || Mage::getSingleton('core/session')->getIsOneStepCheckout() || Mage::getSingleton('core/session')->getMonkeyCheckout();
 //        $isConfirmNeed = FALSE;
 //        if (!Mage::helper('monkey')->isAdmin() &&
 //            (Mage::getStoreConfig(Mage_Newsletter_Model_Subscriber::XML_PATH_CONFIRMATION_FLAG, $customer->getStoreId()) == 1)
@@ -352,6 +355,24 @@ class Ebizmarts_MageMonkey_Model_Observer
         return $observer;
     }
 
+    public function registerCheckoutSubscribeWithSagePay(Varien_Event_Observer $observer){
+        if (!Mage::helper('monkey')->canMonkey()) {
+            return $observer;
+        }
+        $post = $observer->getEvent()->getPost();
+        $oneStep = Mage::app()->getRequest()->getModuleName() == 'onestepcheckout';
+        $subscribe = $post['magemonkey_subscribe'];
+
+        Mage::getSingleton('core/session')->setMonkeyPost(serialize($post));
+        if (!is_null($subscribe) || Mage::getStoreConfig(Ebizmarts_MageMonkey_Model_Config::GENERAL_CHECKOUT_SUBSCRIBE, Mage::app()->getStore()->getId()) >= 3) {
+            Mage::getSingleton('core/session')->setMonkeyCheckout(true);
+        }
+        if ($oneStep) {
+            Mage::getSingleton('core/session')->setIsOneStepCheckout(true);
+        }
+        return $observer;
+    }
+
     /**
      * Add flag on session to tell the module if on success page should subscribe customer
      *
@@ -363,19 +384,26 @@ class Ebizmarts_MageMonkey_Model_Observer
         if (!Mage::helper('monkey')->canMonkey()) {
             return $observer;
         }
+        if (Mage::getSingleton('core/session')->getMonkeyPost()){
+            $order = $observer->getEvent()->getOrder();
+            $this->_handleCheckoutSubscription($order, true);
+        }else {
+            $oneStep = Mage::app()->getRequest()->getModuleName() == 'onestepcheckout';
+            if (Mage::app()->getRequest()->isPost()) {
+                $subscribe = Mage::app()->getRequest()->getPost('magemonkey_subscribe');
 
-        $oneStep = Mage::app()->getRequest()->getModuleName() == 'onestepcheckout';
-        if (Mage::app()->getRequest()->isPost()) {
-            $subscribe = Mage::app()->getRequest()->getPost('magemonkey_subscribe');
-            $force = Mage::app()->getRequest()->getPost('magemonkey_force');
-
-            Mage::getSingleton('core/session')->setMonkeyPost(serialize(Mage::app()->getRequest()->getPost()));
-            if (!is_null($subscribe) || Mage::getStoreConfig(Ebizmarts_MageMonkey_Model_Config::GENERAL_CHECKOUT_SUBSCRIBE) >= 3) {
-                Mage::getSingleton('core/session')->setMonkeyCheckout(true);
+                Mage::getSingleton('core/session')->setMonkeyPost(serialize(Mage::app()->getRequest()->getPost()));
+                if (!is_null($subscribe) || Mage::getStoreConfig(Ebizmarts_MageMonkey_Model_Config::GENERAL_CHECKOUT_SUBSCRIBE, Mage::app()->getStore()->getId()) >= 3) {
+                    Mage::getSingleton('core/session')->setMonkeyCheckout(true);
+                }
             }
-        }
-        if ($oneStep) {
-            Mage::getSingleton('core/session')->setIsOneStepCheckout(true);
+            if ($oneStep) {
+                Mage::getSingleton('core/session')->setIsOneStepCheckout(true);
+            }
+            if (Mage::getSingleton('core/session')->getMonkeyPost()){
+                $order = $observer->getEvent()->getOrder();
+                $this->_handleCheckoutSubscription($order, true);
+            }
         }
         return $observer;
     }
@@ -401,42 +429,8 @@ class Ebizmarts_MageMonkey_Model_Observer
         if ($orderId) {
             $order = Mage::getModel('sales/order')->load($orderId);
         }
+        $this->_handleCheckoutSubscription($order, false);
 
-        if (is_object($order) && $order->getId()) {
-            //Set Campaign Id if exist
-            $campaign_id = Mage::getModel('monkey/ecommerce360')->getCookie()->get('magemonkey_campaign_id');
-            if ($campaign_id) {
-                $order->setEbizmartsMagemonkeyCampaignId($campaign_id);
-            }
-
-            $sessionFlag = Mage::getSingleton('core/session')->getMonkeyCheckout() || Mage::getSingleton('core/session')->getIsOneStepCheckout();
-            if ($sessionFlag) {
-                //Guest Checkout
-                if ((int)$order->getCustomerGroupId() === Mage_Customer_Model_Group::NOT_LOGGED_IN_ID) {
-                    Mage::helper('monkey')->registerGuestCustomer($order);
-                }
-            }
-            $customer = Mage::getSingleton('customer/customer')->load($order->getCustomerId());
-            $saveOnDb = Mage::helper('monkey')->config('checkout_async');
-            $toSubscribe = $customer;
-
-            if (!$toSubscribe->getEmail()) {
-                $toSubscribe = Mage::getModel('newsletter/subscriber')
-                    ->setStoreId($order->getStoreId())
-                    ->setSubscriberFirstname($order->getCustomerFirstname())
-                    ->setSubscriberLastname($order->getCustomerLastname())
-                    ->setEmail($order->getCustomerEmail());
-            }
-
-            if(Mage::getSingleton('core/session')->getMonkeyCheckout() || Mage::getSingleton('core/session')->getIsOneStepCheckout()) {
-                Mage::helper('monkey')->listsSubscription($toSubscribe, $saveOnDb);
-            }
-
-        }
-        Mage::getSingleton('core/session')->setMonkeyCheckout(FALSE);
-        Mage::getSingleton('core/session')->setMonkeyPost(NULL);
-        Mage::getSingleton('core/session')->setIsOneStepCheckout(FALSE);
-        Mage::getSingleton('core/session')->setRegisterCheckoutSuccess(FALSE);
         return $observer;
     }
 
@@ -467,6 +461,46 @@ class Ebizmarts_MageMonkey_Model_Observer
         return $observer;
     }
 
+    protected function _handleCheckoutSubscription($order, $isSaveOrderBefore = false){
+        if (is_object($order) && ($order->getId() || $isSaveOrderBefore)) {
+            //Set Campaign Id if exist
+            $campaign_id = Mage::getModel('monkey/ecommerce360')->getCookie()->get('magemonkey_campaign_id');
+            if ($campaign_id) {
+                $order->setEbizmartsMagemonkeyCampaignId($campaign_id);
+            }
+
+            $sessionFlag = Mage::getSingleton('core/session')->getMonkeyCheckout() || Mage::getSingleton('core/session')->getIsOneStepCheckout();
+            if ($sessionFlag) {
+                //Guest Checkout
+                if ((int)$order->getCustomerGroupId() === Mage_Customer_Model_Group::NOT_LOGGED_IN_ID) {
+                    Mage::helper('monkey')->registerGuestCustomer($order);
+                }
+            }
+            $customer = Mage::getSingleton('customer/customer')->load($order->getCustomerId());
+            $saveOnDb = Mage::helper('monkey')->config('checkout_async');
+            $toSubscribe = $customer;
+
+            if (!$toSubscribe->getEmail()) {
+                $toSubscribe = Mage::getModel('newsletter/subscriber')
+                    ->setStoreId($order->getStoreId())
+                    ->setSubscriberFirstname($order->getCustomerFirstname())
+                    ->setSubscriberLastname($order->getCustomerLastname())
+                    ->setEmail($order->getCustomerEmail());
+
+            }
+            $orderId = $order->getId();
+
+            if(Mage::getSingleton('core/session')->getMonkeyCheckout() || Mage::getSingleton('core/session')->getIsOneStepCheckout()) {
+                Mage::helper('monkey')->listsSubscription($toSubscribe, $saveOnDb, $orderId);
+            }
+
+        }
+        Mage::getSingleton('core/session')->setMonkeyCheckout(FALSE);
+        Mage::getSingleton('core/session')->setMonkeyPost(NULL);
+        Mage::getSingleton('core/session')->setIsOneStepCheckout(FALSE);
+        Mage::getSingleton('core/session')->setRegisterCheckoutSuccess(FALSE);
+    }
+
     public function alterNewsletterGrid(Varien_Event_Observer $observer){
 
         $block = $observer->getEvent()->getBlock();
@@ -479,7 +513,7 @@ class Ebizmarts_MageMonkey_Model_Observer
                 'header' => Mage::helper('newsletter')->__('Customer First Name'),
                 'index' => 'customer_firstname',
                 'renderer' => 'monkey/adminhtml_newsletter_subscriber_renderer_firstname',
-                ), 'type'
+            ), 'type'
             );
 
             $block->addColumnAfter('lastname', array(
