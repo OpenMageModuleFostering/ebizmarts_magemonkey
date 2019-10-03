@@ -1,16 +1,19 @@
 {
-    "name": "OpenMageModuleFostering/Ebizmarts_MageMonkey",
+    "name": "OpenMageModuleFostering\/Ebizmarts_MageMonkey",
     "type": "magento-module",
     "license": "OSL-v3.0",
     "homepage": "",
     "description": "MailChimp integration for Magento by Ebizmarts",
     "authors": [
-    {
-        "name": "Ebizmarts Development Team",
-        "email": "info@ebizmarts.com"
-    }
-],
+        {
+            "name": "Ebizmarts Development Team",
+            "email": "info@ebizmarts.com"
+        }
+    ],
     "suggest": {
-        "magento-hackathon/magento-composer-installer": "*"
-    }
+        "magento-hackathon\/magento-composer-installer": "*"
+    },
+    "keywords": [
+        "openmage-module"
+    ]
 }
